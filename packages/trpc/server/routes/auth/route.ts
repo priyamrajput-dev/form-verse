@@ -1,19 +1,44 @@
-import { z, zodUndefinedModel } from "../../schema";
-import { userService } from "../../services";
-import { getAuthenticationMethodOutputSchema } from "@repo/services/user/model";
-import { publicProcedure, router } from "../../trpc";
-import { generatePath } from "../../utils/path-generator";
+import { router, publicProcedure } from "../../trpc";
+import {
+  createUserWithEmailAndPasswordInputModel,
+  createUserWithEmailAndPasswordOutputModel,
+} from "./model";
+import { userService } from "../../services/index";
 
-const TAGS = ["Authentication"];
+import { generatePath } from "../../utils/path-generator";
 const getPath = generatePath("/authentication");
 
+const TAGS = ["Authentication"];
+
 export const authRouter = router({
-  getSupportedAuthenticationProviders: publicProcedure
-    .meta({ openapi: { method: "GET", path: getPath("/supported-providers"), tags: TAGS } })
-    .input(zodUndefinedModel)
-    .output(z.readonly(z.array(getAuthenticationMethodOutputSchema)))
-    .query(async () => {
-      const supportedMethods = await userService.getAuthenticationMethods();
-      return supportedMethods;
-    }),
-});
+  createUserWithEmailAndPassword: publicProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/createUserWithEmailAndPassword"),
+        tags: TAGS,
+      },
+    })
+    .input(createUserWithEmailAndPasswordInputModel)
+    .output(createUserWithEmailAndPasswordOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      const { fullName, email, password } = input;
+
+      const { id, token } = await userService.createUserWithEmailAndPassword({
+        fullName,
+        email,
+        password,
+      });
+
+      ctx.setCookie("token", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return {
+        id,
+      };
+    })
+})
