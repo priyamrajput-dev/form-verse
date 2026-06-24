@@ -1,11 +1,16 @@
-import { router, publicProcedure } from "../../trpc";
+import { router, publicProcedure, authenticatedProcedure } from "../../trpc";
 import {
   createUserWithEmailAndPasswordInputModel,
   createUserWithEmailAndPasswordOutputModel,
+  signInUserWithEmailAndPasswordInputModel,
+  signInUserWithEmailAndPasswordOutputModel,
+  getLoggedInUserInfoInputModel,
+  getLoggedInUserInfoOutputModel,
 } from "./model";
 import { userService } from "../../services/index";
 
 import { generatePath } from "../../utils/path-generator";
+import { email } from 'zod';
 const getPath = generatePath("/authentication");
 
 const TAGS = ["Authentication"];
@@ -40,5 +45,52 @@ export const authRouter = router({
       return {
         id,
       };
+    }),
+
+  signInUserWithEmailAndPassword: publicProcedure
+    .meta({
+      openapi: {
+        method: "POST",
+        path: getPath("/signInUserWithEmailAndPassword"),
+        tags: TAGS,
+      },
     })
-})
+    .input(signInUserWithEmailAndPasswordInputModel)
+    .output(signInUserWithEmailAndPasswordOutputModel)
+    .mutation(async ({ input, ctx }) => {
+      const { email, password } = input;
+
+      const { id, token } = await userService.signInUserWithEmailAndPassword({ email, password });
+
+      ctx.setCookie("token", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return {
+        id,
+      };
+    }),
+
+  getLoggedInUserInfo: authenticatedProcedure
+    .meta({
+      openapi: {
+        method: "GET",
+        path: getPath("/getLoggedInUserInfo"),
+        tags: TAGS,
+      },
+    })
+    .input(getLoggedInUserInfoInputModel)
+    .output(getLoggedInUserInfoOutputModel)
+    .query(async ({ ctx }) => {
+       const {id, fullName, email} =  await userService.getUserInfoById(ctx.user.id);
+
+       return {
+        id,
+        fullName,
+        email
+       }
+    }),
+});

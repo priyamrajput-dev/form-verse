@@ -11,7 +11,7 @@ export interface TRPCContext {
     getCookie: (name : string) => string | undefined;
     clearCookie: (name : string) => void;
 
-    id ?: TRPCCtxUser;
+    user ?: TRPCCtxUser;
 
 }
 
@@ -27,7 +27,7 @@ export async function createContext({req, res}: CreateExpressContextOptions) {
             return clearCookieUtil(res, name);
         },
 
-        id : undefined
+        user : undefined
 
     }
 
